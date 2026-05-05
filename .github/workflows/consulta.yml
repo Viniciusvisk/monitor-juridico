@@ -1,0 +1,34 @@
+name: Consulta sob demanda
+
+on:
+  workflow_dispatch:
+    inputs:
+      origem:
+        description: "Quem pediu a consulta"
+        required: false
+        default: "manual"
+
+jobs:
+  consultar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install requests beautifulsoup4
+
+      - name: Executar consulta e responder no WhatsApp
+        env:
+          ZAPI_INSTANCE: ${{ secrets.ZAPI_INSTANCE }}
+          ZAPI_TOKEN: ${{ secrets.ZAPI_TOKEN }}
+          ZAPI_CLIENT_TOKEN: ${{ secrets.ZAPI_CLIENT_TOKEN }}
+          NUMERO_WHATSAPP: ${{ secrets.NUMERO_WHATSAPP }}
+          DATAJUD_KEY: ${{ secrets.DATAJUD_KEY }}
+        run: python consultar_processo.py
