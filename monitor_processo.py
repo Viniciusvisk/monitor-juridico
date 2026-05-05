@@ -1,6 +1,6 @@
 """
 Monitor de Processo Jurídico — TRF3
-Adaptado para GitHub Actions
+Usa a API pública do Datajud (CNJ) — sem scraping, sem bloqueios
 Processo: 5044070-33.2025.4.03.6301 (Sueli Batista da Silva)
 """
 
@@ -8,12 +8,7 @@ import requests
 import hashlib
 import json
 import os
-import time
-import random
 from datetime import datetime
-from bs4 import BeautifulSoup
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 # ─── CONFIGURAÇÕES ───────────────────────────────────────────
 
@@ -27,98 +22,55 @@ NUMERO_WHATSAPP   = os.environ.get("NUMERO_WHATSAPP", "")
 
 ARQUIVO_ESTADO    = "estado_processo.json"
 
-# ─── TRF3 ────────────────────────────────────────────────────
+# ─── DATAJUD (API oficial do CNJ) ────────────────────────────
 
-URL_CONSULTA = "https://pje1g.trf3.jus.br/pje/ConsultaPublica/listView.seam"
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;"
-        "q=0.9,image/avif,image/webp,*/*;q=0.8"
-    ),
-    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Cache-Control": "max-age=0",
-}
-
-
-def criar_session():
-    session = requests.Session()
-    retry = Retry(
-        total=4,
-        backoff_factor=3,
-        status_forcelist=[429, 500, 502, 503, 504],
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
+DATAJUD_URL = "https://api-publica.datajud.cnj.jus.br/api_publica_trf3/_search"
+DATAJUD_KEY = "APIKey cDZHYzlZa0JadVREZDJCendFbzV3QT09"  # chave pública oficial do CNJ
 
 
 def buscar_movimentacoes():
-    session = criar_session()
-
-    pausa = random.uniform(3, 8)
-    print(f"  Aguardando {pausa:.1f}s antes de acessar o TRF3...")
-    time.sleep(pausa)
-
-    print("  Carregando página inicial do TRF3...")
-    resp = session.get(URL_CONSULTA, headers=HEADERS, timeout=60)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    viewstate = ""
-    vs = soup.find("input", {"name": "javax.faces.ViewState"})
-    if vs:
-        viewstate = vs.get("value", "")
-    print(f"  ViewState obtido: {'sim' if viewstate else 'não encontrado'}")
-
-    time.sleep(random.uniform(2, 4))
-
-    num_limpo = NUMERO_PROCESSO.replace("-", "").replace(".", "")
-    payload = {
-        "javax.faces.ViewState": viewstate,
-        "fPP:numProcesso-inputNumeroProcesso": num_limpo,
-        "fPP:pesquisar": "Pesquisar",
+    query = {
+        "query": {
+            "match": {
+                "numeroProcesso": NUMERO_PROCESSO.replace("-", "").replace(".", "")
+            }
+        }
     }
 
-    print("  Enviando consulta do processo...")
-    headers_post = {**HEADERS, "Referer": URL_CONSULTA}
-    resp2 = session.post(URL_CONSULTA, data=payload, headers=headers_post, timeout=60)
-    resp2.raise_for_status()
-    soup2 = BeautifulSoup(resp2.text, "html.parser")
+    resp = requests.post(
+        DATAJUD_URL,
+        json=query,
+        headers={
+            "Authorization": DATAJUD_KEY,
+            "Content-Type": "application/json",
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    hits = data.get("hits", {}).get("hits", [])
+    if not hits:
+        print("  Nenhum resultado encontrado no Datajud para esse processo.")
+        return []
+
+    processo = hits[0].get("_source", {})
+    movimentos = processo.get("movimentos", [])
 
     movimentacoes = []
-    tabela = soup2.find("table", {"id": lambda x: x and "movimento" in str(x).lower()})
+    for m in movimentos:
+        data_mov = m.get("dataHora", "")[:10]  # pega só a data YYYY-MM-DD
+        # Converte para DD/MM/YYYY
+        try:
+            data_fmt = datetime.strptime(data_mov, "%Y-%m-%d").strftime("%d/%m/%Y")
+        except Exception:
+            data_fmt = data_mov
 
-    if not tabela:
-        for t in soup2.find_all("table"):
-            for linha in t.find_all("tr")[1:]:
-                cols = linha.find_all("td")
-                if len(cols) >= 2:
-                    data = cols[0].get_text(strip=True)
-                    desc = cols[-1].get_text(strip=True)
-                    if data and desc and len(data) >= 8:
-                        movimentacoes.append({"data": data, "descricao": desc})
-    else:
-        for linha in tabela.find_all("tr")[1:]:
-            cols = linha.find_all("td")
-            if len(cols) >= 2:
-                movimentacoes.append({
-                    "data": cols[0].get_text(strip=True),
-                    "descricao": cols[-1].get_text(strip=True),
-                })
+        nome = m.get("nome", "") or m.get("complementosTabelados", [{}])[0].get("descricao", "")
+        movimentacoes.append({"data": data_fmt, "descricao": nome})
 
+    # Ordena do mais recente para o mais antigo
+    movimentacoes.sort(key=lambda x: x["data"], reverse=True)
     return movimentacoes
 
 
@@ -175,18 +127,15 @@ def montar_mensagem(novas):
 # ─── MAIN ────────────────────────────────────────────────────
 
 def main():
-    print(f"Verificando processo {NUMERO_PROCESSO} ...")
+    print(f"Verificando processo {NUMERO_PROCESSO} via Datajud/CNJ ...")
 
     try:
         movs = buscar_movimentacoes()
-    except requests.exceptions.Timeout:
-        print("✗ Timeout — TRF3 pode estar fora do ar. Tentando na próxima execução.")
-        raise SystemExit(0)
     except Exception as e:
-        print(f"✗ Erro ao consultar TRF3: {e}")
+        print(f"✗ Erro ao consultar Datajud: {e}")
         raise SystemExit(0)
 
-    print(f"  {len(movs)} movimentação(ões) encontrada(s) no site.")
+    print(f"  {len(movs)} movimentação(ões) encontrada(s).")
 
     estado    = carregar_estado()
     novo_hash = hash_movs(movs)
