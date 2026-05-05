@@ -78,8 +78,13 @@ def buscar_movimentacoes():
 
 def carregar_estado():
     if os.path.exists(ARQUIVO_ESTADO):
-        with open(ARQUIVO_ESTADO, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(ARQUIVO_ESTADO, "r", encoding="utf-8") as f:
+                conteudo = f.read().strip()
+                if conteudo:
+                    return json.loads(conteudo)
+        except (json.JSONDecodeError, ValueError):
+            pass
     return {"hash_ultimo": None, "ultima_verificacao": None, "movimentacoes": []}
 
 
