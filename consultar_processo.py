@@ -1,88 +1,142 @@
 """
-Consulta sob demanda — responde no WhatsApp quando acionado via Pipedream
+Consulta sob demanda — TRF3 via Selenium (navegador real)
 Processo: 5044070-33.2025.4.03.6301 (Sueli Batista da Silva)
 """
 
-import requests
+import os
 import time
 import json
-import os
+import requests
 from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+
+# ─── CONFIGURAÇÕES ───────────────────────────────────────────
 
 NUMERO_PROCESSO   = "5044070-33.2025.4.03.6301"
 NOME_PARTE        = "Sueli Batista da Silva"
+DATA_CORTE        = datetime.strptime("13/04/2026", "%d/%m/%Y")
 
 ZAPI_INSTANCE     = os.environ.get("ZAPI_INSTANCE", "")
 ZAPI_TOKEN        = os.environ.get("ZAPI_TOKEN", "")
 ZAPI_CLIENT_TOKEN = os.environ.get("ZAPI_CLIENT_TOKEN", "")
-NUMERO_WHATSAPP   = os.environ.get("NUMERO_WHATSAPP", "")
-DATAJUD_KEY       = "APIKey " + os.environ.get("DATAJUD_KEY", "")
+NUMEROS_WHATSAPP  = [
+    os.environ.get("NUMERO_WHATSAPP", ""),
+    "5511949543288",
+]
 
-DATAJUD_URL = "https://api-publica.datajud.cnj.jus.br/api_publica_trf3/_search"
-DATA_CORTE  = datetime.strptime("13/04/2026", "%d/%m/%Y")
+URL = "https://pje1g.trf3.jus.br/pje/ConsultaPublica/listView.seam"
+
+
+# ─── SELENIUM ────────────────────────────────────────────────
+
+def criar_driver():
+    opts = Options()
+    opts.add_argument("--headless")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
+    return webdriver.Chrome(options=opts)
 
 
 def buscar_movimentacoes():
-    query = {
-        "query": {
-            "match": {
-                "numeroProcesso": NUMERO_PROCESSO.replace("-", "").replace(".", "")
-            }
-        }
-    }
-    # Tenta até 3 vezes com pausa entre tentativas
-    for tentativa in range(1, 4):
-        try:
-            resp = requests.post(
-                DATAJUD_URL,
-                json=query,
-                headers={"Authorization": DATAJUD_KEY, "Content-Type": "application/json"},
-                timeout=30,
-            )
-            resp.raise_for_status()
-            break
-        except Exception as e:
-            print(f"  Tentativa {tentativa}/3 falhou: {e}")
-            if tentativa == 3:
-                raise
-            time.sleep(10)
-    hits = resp.json().get("hits", {}).get("hits", [])
-    if not hits:
-        return []
-
-    movimentos = hits[0].get("_source", {}).get("movimentos", [])
+    driver = criar_driver()
     movimentacoes = []
-    for m in movimentos:
-        data_raw = m.get("dataHora", "")[:10]
-        try:
-            data_dt  = datetime.strptime(data_raw, "%Y-%m-%d")
-            data_fmt = data_dt.strftime("%d/%m/%Y")
-        except Exception:
-            continue
-        if data_dt < DATA_CORTE:
-            continue
-        nome = m.get("nome", "") or ""
-        movimentacoes.append({"data": data_fmt, "data_dt": data_dt, "descricao": nome})
 
-    movimentacoes.sort(key=lambda x: x["data_dt"], reverse=True)
+    try:
+        print("  Abrindo site do TRF3...")
+        driver.get(URL)
+        time.sleep(3)
+
+        # Preenche número do processo
+        campo = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.XPATH,
+                "//input[contains(@id,'numProcesso') or contains(@name,'numProcesso')]"
+            ))
+        )
+        num_limpo = NUMERO_PROCESSO.replace("-", "").replace(".", "")
+        campo.clear()
+        campo.send_keys(num_limpo)
+        time.sleep(1)
+
+        # Clica em Pesquisar
+        btn = driver.find_element(By.XPATH,
+            "//input[@value='Pesquisar' or @value='pesquisar'] | //button[contains(text(),'Pesquisar')]"
+        )
+        btn.click()
+        time.sleep(4)
+
+        # Clica no processo encontrado
+        try:
+            link = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH,
+                    "//a[contains(@id,'processo') or contains(@href,'processo')]"
+                ))
+            )
+            link.click()
+            time.sleep(3)
+        except Exception:
+            pass
+
+        # Extrai movimentações da tabela
+        linhas = driver.find_elements(By.XPATH, "//table//tr[td]")
+        for linha in linhas:
+            cols = linha.find_elements(By.TAG_NAME, "td")
+            if len(cols) >= 2:
+                data_txt = cols[0].text.strip()
+                desc_txt = cols[-1].text.strip()
+                if data_txt and desc_txt and len(data_txt) >= 8:
+                    try:
+                        data_dt = datetime.strptime(data_txt[:10], "%d/%m/%Y")
+                        if data_dt >= DATA_CORTE:
+                            movimentacoes.append({
+                                "data": data_txt[:10],
+                                "data_dt": data_dt,
+                                "descricao": desc_txt,
+                            })
+                    except Exception:
+                        pass
+
+        movimentacoes.sort(key=lambda x: x["data_dt"], reverse=True)
+
+    finally:
+        driver.quit()
+
     return movimentacoes
 
 
-NUMEROS_ADICIONAIS = ["5511949543288"]
+# ─── WHATSAPP ────────────────────────────────────────────────
 
 def enviar_whatsapp(mensagem: str):
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
-    for numero in [NUMERO_WHATSAPP] + NUMEROS_ADICIONAIS:
-        requests.post(
-            url,
-            json={"phone": numero, "message": mensagem},
-            headers={"Content-Type": "application/json", "Client-Token": ZAPI_CLIENT_TOKEN},
-            timeout=15,
-        ).raise_for_status()
+    for numero in NUMEROS_WHATSAPP:
+        if not numero:
+            continue
+        try:
+            requests.post(
+                url,
+                json={"phone": numero, "message": mensagem},
+                headers={"Content-Type": "application/json", "Client-Token": ZAPI_CLIENT_TOKEN},
+                timeout=15,
+            ).raise_for_status()
+            print(f"  ✓ WhatsApp enviado para {numero}")
+        except Exception as e:
+            print(f"  ✗ Erro ao enviar para {numero}: {e}")
 
+
+# ─── MAIN ────────────────────────────────────────────────────
 
 def main():
-    print("Consulta sob demanda iniciada...")
+    print(f"Consulta sob demanda — {NUMERO_PROCESSO} via TRF3...")
+
     try:
         movs = buscar_movimentacoes()
     except Exception as e:
@@ -102,7 +156,7 @@ def main():
             f"Processo: {NUMERO_PROCESSO}",
             f"Parte: {NOME_PARTE}",
             "",
-            f"*Últimas movimentações (a partir de 13/04/2026):*",
+            "*Movimentações a partir de 13/04/2026:*",
             "",
         ]
         for i, m in enumerate(movs, 1):
@@ -111,7 +165,7 @@ def main():
         mensagem = "\n".join(linhas)
 
     enviar_whatsapp(mensagem)
-    print(f"✓ Resposta enviada para {NUMERO_WHATSAPP}")
+    print("Concluído.")
 
 
 if __name__ == "__main__":
