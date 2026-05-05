@@ -4,6 +4,7 @@ Processo: 5044070-33.2025.4.03.6301 (Sueli Batista da Silva)
 """
 
 import requests
+import time
 import json
 import os
 from datetime import datetime
@@ -29,13 +30,22 @@ def buscar_movimentacoes():
             }
         }
     }
-    resp = requests.post(
-        DATAJUD_URL,
-        json=query,
-        headers={"Authorization": DATAJUD_KEY, "Content-Type": "application/json"},
-        timeout=30,
-    )
-    resp.raise_for_status()
+    # Tenta até 3 vezes com pausa entre tentativas
+    for tentativa in range(1, 4):
+        try:
+            resp = requests.post(
+                DATAJUD_URL,
+                json=query,
+                headers={"Authorization": DATAJUD_KEY, "Content-Type": "application/json"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            print(f"  Tentativa {tentativa}/3 falhou: {e}")
+            if tentativa == 3:
+                raise
+            time.sleep(10)
     hits = resp.json().get("hits", {}).get("hits", [])
     if not hits:
         return []
