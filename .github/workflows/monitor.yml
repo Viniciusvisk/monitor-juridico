@@ -2,16 +2,15 @@ name: Monitor Processo TRF3
 
 on:
   schedule:
-    # Roda a cada hora (minuto 0 de cada hora)
     - cron: "0 * * * *"
-  workflow_dispatch: # Permite rodar manualmente pelo painel do GitHub
+  workflow_dispatch:
 
 jobs:
   monitorar:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # Necessário para salvar o estado no repositório
+      contents: write
 
     steps:
       - name: Baixar repositório
@@ -37,6 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          touch estado_processo.json
           git add estado_processo.json
           git diff --cached --quiet || git commit -m "estado: atualizado em $(date '+%d/%m/%Y %H:%M')"
           git push
