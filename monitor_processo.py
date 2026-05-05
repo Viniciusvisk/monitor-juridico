@@ -69,8 +69,13 @@ def buscar_movimentacoes():
         nome = m.get("nome", "") or m.get("complementosTabelados", [{}])[0].get("descricao", "")
         movimentacoes.append({"data": data_fmt, "descricao": nome})
 
-    # Ordena do mais recente para o mais antigo
+    # Ordena do mais recente para o mais antigo e filtra a partir de 13/04/2026
     movimentacoes.sort(key=lambda x: x["data"], reverse=True)
+    data_corte = datetime.strptime("13/04/2026", "%d/%m/%Y")
+    movimentacoes = [
+        m for m in movimentacoes
+        if datetime.strptime(m["data"], "%d/%m/%Y") >= data_corte
+    ]
     return movimentacoes
 
 
