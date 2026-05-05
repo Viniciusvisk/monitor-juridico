@@ -30,6 +30,7 @@ jobs:
           ZAPI_TOKEN: ${{ secrets.ZAPI_TOKEN }}
           ZAPI_CLIENT_TOKEN: ${{ secrets.ZAPI_CLIENT_TOKEN }}
           NUMERO_WHATSAPP: ${{ secrets.NUMERO_WHATSAPP }}
+          DATAJUD_KEY: ${{ secrets.DATAJUD_KEY }}
         run: python monitor_processo.py
 
       - name: Salvar estado atualizado
