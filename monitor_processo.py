@@ -25,7 +25,7 @@ ARQUIVO_ESTADO    = "estado_processo.json"
 # ─── DATAJUD (API oficial do CNJ) ────────────────────────────
 
 DATAJUD_URL = "https://api-publica.datajud.cnj.jus.br/api_publica_trf3/_search"
-DATAJUD_KEY = "APIKey cDZHYzlZa0JadVREZDJCendFbzV3QT09"  # chave pública oficial do CNJ
+DATAJUD_KEY = "APIKey " + os.environ.get("DATAJUD_KEY", "")  # chave pública oficial do CNJ
 
 
 def buscar_movimentacoes():
