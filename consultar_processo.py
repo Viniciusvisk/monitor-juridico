@@ -58,14 +58,17 @@ def buscar_movimentacoes():
     return movimentacoes
 
 
+NUMEROS_ADICIONAIS = ["5511949543288"]
+
 def enviar_whatsapp(mensagem: str):
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
-    requests.post(
-        url,
-        json={"phone": NUMERO_WHATSAPP, "message": mensagem},
-        headers={"Content-Type": "application/json", "Client-Token": ZAPI_CLIENT_TOKEN},
-        timeout=15,
-    ).raise_for_status()
+    for numero in [NUMERO_WHATSAPP] + NUMEROS_ADICIONAIS:
+        requests.post(
+            url,
+            json={"phone": numero, "message": mensagem},
+            headers={"Content-Type": "application/json", "Client-Token": ZAPI_CLIENT_TOKEN},
+            timeout=15,
+        ).raise_for_status()
 
 
 def main():
