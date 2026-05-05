@@ -1,1 +1,42 @@
+name: Monitor Processo TRF3
 
+on:
+  schedule:
+    # Roda a cada hora (minuto 0 de cada hora)
+    - cron: "0 * * * *"
+  workflow_dispatch: # Permite rodar manualmente pelo painel do GitHub
+
+jobs:
+  monitorar:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Necessário para salvar o estado no repositório
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install requests beautifulsoup4
+
+      - name: Executar monitor
+        env:
+          ZAPI_INSTANCE: ${{ secrets.ZAPI_INSTANCE }}
+          ZAPI_TOKEN: ${{ secrets.ZAPI_TOKEN }}
+          ZAPI_CLIENT_TOKEN: ${{ secrets.ZAPI_CLIENT_TOKEN }}
+          NUMERO_WHATSAPP: ${{ secrets.NUMERO_WHATSAPP }}
+        run: python monitor_processo.py
+
+      - name: Salvar estado atualizado
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add estado_processo.json
+          git diff --cached --quiet || git commit -m "estado: atualizado em $(date '+%d/%m/%Y %H:%M')"
+          git push
