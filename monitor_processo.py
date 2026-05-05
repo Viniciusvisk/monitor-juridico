@@ -8,11 +8,14 @@ import requests
 import hashlib
 import json
 import os
+import time
+import random
 from datetime import datetime
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # ─── CONFIGURAÇÕES ───────────────────────────────────────────
-# Estas variáveis vêm dos Secrets do GitHub (não edite aqui)
 
 NUMERO_PROCESSO   = "5044070-33.2025.4.03.6301"
 NOME_PARTE        = "Sueli Batista da Silva"
@@ -30,18 +33,47 @@ URL_CONSULTA = "https://pje1g.trf3.jus.br/pje/ConsultaPublica/listView.seam"
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "pt-BR,pt;q=0.9",
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
 }
 
 
-def buscar_movimentacoes():
+def criar_session():
     session = requests.Session()
+    retry = Retry(
+        total=4,
+        backoff_factor=3,
+        status_forcelist=[429, 500, 502, 503, 504],
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
 
-    resp = session.get(URL_CONSULTA, headers=HEADERS, timeout=30)
+
+def buscar_movimentacoes():
+    session = criar_session()
+
+    pausa = random.uniform(3, 8)
+    print(f"  Aguardando {pausa:.1f}s antes de acessar o TRF3...")
+    time.sleep(pausa)
+
+    print("  Carregando página inicial do TRF3...")
+    resp = session.get(URL_CONSULTA, headers=HEADERS, timeout=60)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
 
@@ -49,6 +81,9 @@ def buscar_movimentacoes():
     vs = soup.find("input", {"name": "javax.faces.ViewState"})
     if vs:
         viewstate = vs.get("value", "")
+    print(f"  ViewState obtido: {'sim' if viewstate else 'não encontrado'}")
+
+    time.sleep(random.uniform(2, 4))
 
     num_limpo = NUMERO_PROCESSO.replace("-", "").replace(".", "")
     payload = {
@@ -57,7 +92,9 @@ def buscar_movimentacoes():
         "fPP:pesquisar": "Pesquisar",
     }
 
-    resp2 = session.post(URL_CONSULTA, data=payload, headers=HEADERS, timeout=30)
+    print("  Enviando consulta do processo...")
+    headers_post = {**HEADERS, "Referer": URL_CONSULTA}
+    resp2 = session.post(URL_CONSULTA, data=payload, headers=headers_post, timeout=60)
     resp2.raise_for_status()
     soup2 = BeautifulSoup(resp2.text, "html.parser")
 
@@ -142,9 +179,12 @@ def main():
 
     try:
         movs = buscar_movimentacoes()
+    except requests.exceptions.Timeout:
+        print("✗ Timeout — TRF3 pode estar fora do ar. Tentando na próxima execução.")
+        raise SystemExit(0)
     except Exception as e:
         print(f"✗ Erro ao consultar TRF3: {e}")
-        raise SystemExit(1)
+        raise SystemExit(0)
 
     print(f"  {len(movs)} movimentação(ões) encontrada(s) no site.")
 
