@@ -1,24 +1,19 @@
 """
-Consulta sob demanda — TRF3 via Selenium (navegador real)
+Consulta sob demanda — TRF3
+Tenta Datajud primeiro (rápido). Se falhar, usa Selenium (TRF3 direto).
 Processo: 5044070-33.2025.4.03.6301 (Sueli Batista da Silva)
 """
 
 import os
 import time
-import json
 import requests
 from datetime import datetime
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 
 # ─── CONFIGURAÇÕES ───────────────────────────────────────────
 
 NUMERO_PROCESSO   = "5044070-33.2025.4.03.6301"
 NOME_PARTE        = "Sueli Batista da Silva"
-DATA_CORTE        = datetime.strptime("13/04/2026", "%d/%m/%Y")
+DATA_CORTE        = datetime.strptime("01/04/2026", "%d/%m/%Y")
 
 ZAPI_INSTANCE     = os.environ.get("ZAPI_INSTANCE", "")
 ZAPI_TOKEN        = os.environ.get("ZAPI_TOKEN", "")
@@ -28,12 +23,65 @@ NUMEROS_WHATSAPP  = [
     "5511949543288",
 ]
 
-URL = "https://pje1g.trf3.jus.br/pje/ConsultaPublica/listView.seam"
+DATAJUD_URL = "https://api-publica.datajud.cnj.jus.br/api_publica_trf3/_search"
+DATAJUD_KEY = "APIKey " + os.environ.get("DATAJUD_KEY", "")
+TRF3_URL    = "https://pje1g.trf3.jus.br/pje/ConsultaPublica/listView.seam"
 
 
-# ─── SELENIUM ────────────────────────────────────────────────
+# ─── FONTE 1: DATAJUD (rápido) ───────────────────────────────
 
-def criar_driver():
+def buscar_datajud():
+    print("  [1/2] Tentando Datajud...")
+    query = {"query": {"match": {"numeroProcesso": NUMERO_PROCESSO.replace("-","").replace(".","") }}}
+    for tentativa in range(1, 4):
+        try:
+            resp = requests.post(
+                DATAJUD_URL,
+                json=query,
+                headers={"Authorization": DATAJUD_KEY, "Content-Type": "application/json"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            hits = resp.json().get("hits", {}).get("hits", [])
+            if not hits:
+                return []
+            movimentos = hits[0].get("_source", {}).get("movimentos", [])
+            movs = []
+            for m in movimentos:
+                data_raw = m.get("dataHora", "")[:10]
+                try:
+                    data_dt = datetime.strptime(data_raw, "%Y-%m-%d")
+                    if data_dt < DATA_CORTE:
+                        continue
+                    movs.append({
+                        "data": data_dt.strftime("%d/%m/%Y"),
+                        "data_dt": data_dt,
+                        "descricao": m.get("nome", ""),
+                    })
+                except Exception:
+                    continue
+            movs.sort(key=lambda x: x["data_dt"], reverse=True)
+            print(f"  ✓ Datajud OK — {len(movs)} movimentação(ões)")
+            return movs
+        except Exception as e:
+            print(f"  Datajud tentativa {tentativa}/3: {e}")
+            if tentativa < 3:
+                time.sleep(5)
+    return None  # None = falhou, tentar fallback
+
+
+# ─── FONTE 2: TRF3 via Selenium (fallback) ───────────────────
+
+def buscar_selenium():
+    print("  [2/2] Datajud indisponível — usando TRF3 direto...")
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+
     opts = Options()
     opts.add_argument("--headless")
     opts.add_argument("--no-sandbox")
@@ -44,37 +92,31 @@ def criar_driver():
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     )
-    return webdriver.Chrome(options=opts)
 
-
-def buscar_movimentacoes():
-    driver = criar_driver()
-    movimentacoes = []
-
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=opts
+    )
+    movs = []
     try:
-        print("  Abrindo site do TRF3...")
-        driver.get(URL)
+        driver.get(TRF3_URL)
         time.sleep(3)
 
-        # Preenche número do processo
         campo = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.XPATH,
                 "//input[contains(@id,'numProcesso') or contains(@name,'numProcesso')]"
             ))
         )
-        num_limpo = NUMERO_PROCESSO.replace("-", "").replace(".", "")
         campo.clear()
-        campo.send_keys(num_limpo)
+        campo.send_keys(NUMERO_PROCESSO.replace("-","").replace(".",""))
         time.sleep(1)
 
-        # Clica em Pesquisar
         btn = driver.find_element(By.XPATH,
-            "//input[@value='Pesquisar' or @value='pesquisar'] | //button[contains(text(),'Pesquisar')]"
+            "//input[@value='Pesquisar'] | //button[contains(text(),'Pesquisar')]"
         )
         btn.click()
         time.sleep(4)
 
-        # Clica no processo encontrado
         try:
             link = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH,
@@ -86,31 +128,24 @@ def buscar_movimentacoes():
         except Exception:
             pass
 
-        # Extrai movimentações da tabela
-        linhas = driver.find_elements(By.XPATH, "//table//tr[td]")
-        for linha in linhas:
+        for linha in driver.find_elements(By.XPATH, "//table//tr[td]"):
             cols = linha.find_elements(By.TAG_NAME, "td")
             if len(cols) >= 2:
-                data_txt = cols[0].text.strip()
+                data_txt = cols[0].text.strip()[:10]
                 desc_txt = cols[-1].text.strip()
-                if data_txt and desc_txt and len(data_txt) >= 8:
-                    try:
-                        data_dt = datetime.strptime(data_txt[:10], "%d/%m/%Y")
-                        if data_dt >= DATA_CORTE:
-                            movimentacoes.append({
-                                "data": data_txt[:10],
-                                "data_dt": data_dt,
-                                "descricao": desc_txt,
-                            })
-                    except Exception:
-                        pass
+                try:
+                    data_dt = datetime.strptime(data_txt, "%d/%m/%Y")
+                    if data_dt >= DATA_CORTE:
+                        movs.append({"data": data_txt, "data_dt": data_dt, "descricao": desc_txt})
+                except Exception:
+                    pass
 
-        movimentacoes.sort(key=lambda x: x["data_dt"], reverse=True)
-
+        movs.sort(key=lambda x: x["data_dt"], reverse=True)
+        print(f"  ✓ TRF3 OK — {len(movs)} movimentação(ões)")
     finally:
         driver.quit()
 
-    return movimentacoes
+    return movs
 
 
 # ─── WHATSAPP ────────────────────────────────────────────────
@@ -135,20 +170,23 @@ def enviar_whatsapp(mensagem: str):
 # ─── MAIN ────────────────────────────────────────────────────
 
 def main():
-    print(f"Consulta sob demanda — {NUMERO_PROCESSO} via TRF3...")
+    print(f"Consulta sob demanda — {NUMERO_PROCESSO}...")
 
-    try:
-        movs = buscar_movimentacoes()
-    except Exception as e:
-        enviar_whatsapp(f"⚠️ Erro ao consultar o processo: {e}")
-        raise SystemExit(0)
+    movs = buscar_datajud()
+
+    if movs is None:
+        try:
+            movs = buscar_selenium()
+        except Exception as e:
+            enviar_whatsapp(f"⚠️ Erro ao consultar o processo:\n{e}")
+            raise SystemExit(0)
 
     if not movs:
         mensagem = (
             f"⚖️ *Consulta — TRF3*\n"
             f"Processo: {NUMERO_PROCESSO}\n"
             f"Parte: {NOME_PARTE}\n\n"
-            f"Nenhuma movimentação encontrada após 13/04/2026. 📭"
+            f"Nenhuma movimentação encontrada após 01/04/2026. 📭"
         )
     else:
         linhas = [
@@ -156,7 +194,7 @@ def main():
             f"Processo: {NUMERO_PROCESSO}",
             f"Parte: {NOME_PARTE}",
             "",
-            "*Movimentações a partir de 13/04/2026:*",
+            "*Movimentações a partir de 01/04/2026:*",
             "",
         ]
         for i, m in enumerate(movs, 1):
