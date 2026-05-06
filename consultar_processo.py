@@ -20,7 +20,7 @@ NOME_PARTE        = "Sueli Batista da Silva"
 ZAPI_INSTANCE     = os.environ.get("ZAPI_INSTANCE", "")
 ZAPI_TOKEN        = os.environ.get("ZAPI_TOKEN", "")
 ZAPI_CLIENT_TOKEN = os.environ.get("ZAPI_CLIENT_TOKEN", "")
-NUMEROS_WHATSAPP  = [os.environ.get("NUMERO_WHATSAPP", ""), "5511949543288"]
+NUMEROS_WHATSAPP  = [os.environ.get("NUMERO_WHATSAPP", ""), "##"]
 
 DATAJUD_URL = "https://api-publica.datajud.cnj.jus.br/api_publica_trf3/_search"
 DATAJUD_KEY = "APIKey " + os.environ.get("DATAJUD_KEY", "")
