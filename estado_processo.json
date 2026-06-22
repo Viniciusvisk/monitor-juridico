@@ -1,7 +1,11 @@
 {
-  "hash_ultimo": "6cc4192c0b475f8d07dd9ce30772a04a75185eb1d89ee67937d19aea93644e1a",
-  "ultima_verificacao": "22/06/2026 12:48",
+  "hash_ultimo": "aac0dccfe85c22f4dfafb298e2ac20f06e811a23db649f92aa995d38e57e210e",
+  "ultima_verificacao": "22/06/2026 20:44",
   "movimentacoes": [
+    {
+      "data": "20/05/2026",
+      "descricao": "Expedida/certificada"
+    },
     {
       "data": "15/04/2026",
       "descricao": "Publicação"
@@ -9,6 +13,14 @@
     {
       "data": "15/04/2026",
       "descricao": "Disponibilização no Diário da Justiça Eletrônico"
+    },
+    {
+      "data": "10/06/2026",
+      "descricao": "Conclusão"
+    },
+    {
+      "data": "06/06/2026",
+      "descricao": "Petição"
     },
     {
       "data": "04/05/2026",
