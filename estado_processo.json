@@ -1,10 +1,26 @@
 {
-  "hash_ultimo": "aac0dccfe85c22f4dfafb298e2ac20f06e811a23db649f92aa995d38e57e210e",
-  "ultima_verificacao": "25/06/2026 14:29",
+  "hash_ultimo": "3928bfdda20966d6da42b0ff92ee5e323effd16a40b50fd8f9fba1d84cf68d9f",
+  "ultima_verificacao": "25/06/2026 19:57",
   "movimentacoes": [
     {
       "data": "20/05/2026",
       "descricao": "Expedida/certificada"
+    },
+    {
+      "data": "17/06/2026",
+      "descricao": "Expedida/certificada"
+    },
+    {
+      "data": "17/06/2026",
+      "descricao": "Improcedência"
+    },
+    {
+      "data": "17/06/2026",
+      "descricao": "Gratuidade da Justiça"
+    },
+    {
+      "data": "17/06/2026",
+      "descricao": "Antecipação de tutela"
     },
     {
       "data": "15/04/2026",
