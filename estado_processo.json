@@ -1,6 +1,6 @@
 {
-  "hash_ultimo": "e2b2e0c3e3f6425bd4904f7aa26c17393630c38ebd43c4ef0e0ffb4a8a1374b9",
-  "ultima_verificacao": "21/09/2026 12:38",
+  "hash_ultimo": "568083b419b719dba3488b59b5c476747b9a064d050eca06524227062cdc1582",
+  "ultima_verificacao": "21/09/2026 18:27",
   "movimentacoes": [
     {
       "data": "31/07/2026",
@@ -13,6 +13,18 @@
     {
       "data": "31/07/2026",
       "descricao": "Recebimento"
+    },
+    {
+      "data": "18/09/2026",
+      "descricao": "Disponibilização no Diário da Justiça Eletrônico"
+    },
+    {
+      "data": "17/09/2026",
+      "descricao": "Expedida/certificada"
+    },
+    {
+      "data": "17/09/2026",
+      "descricao": "Para julgamento de mérito"
     },
     {
       "data": "03/08/2026",
