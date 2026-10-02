@@ -1,70 +1,42 @@
 {
-  "hash_ultimo": "8e366e900f7d13d6dcc283962071604b94dd36b0280b89f85b47a58eaee67892",
-  "ultima_verificacao": "02/10/2026 16:05",
+  "hash_ultimo": "c07f294853624bcf501040e036d2c1c4928b96ef0f44a5c69c5e903609a94a2d",
+  "ultima_verificacao": "02/10/2026 21:09",
   "movimentacoes": [
     {
       "data": "31/07/2026",
-      "descricao": "Remessa"
+      "descricao": "Distribuição"
     },
     {
       "data": "31/07/2026",
+      "descricao": "Recebimento"
+    },
+    {
+      "data": "31/07/2026",
+      "descricao": "Recebimento"
+    },
+    {
+      "data": "21/09/2026",
+      "descricao": "Publicação"
+    },
+    {
+      "data": "18/09/2026",
+      "descricao": "Disponibilização no Diário da Justiça Eletrônico"
+    },
+    {
+      "data": "17/09/2026",
+      "descricao": "Expedida/certificada"
+    },
+    {
+      "data": "17/09/2026",
+      "descricao": "Para julgamento de mérito"
+    },
+    {
+      "data": "03/08/2026",
       "descricao": "Remessa"
     },
     {
-      "data": "20/05/2026",
-      "descricao": "Expedida/certificada"
-    },
-    {
-      "data": "17/06/2026",
-      "descricao": "Expedida/certificada"
-    },
-    {
-      "data": "17/06/2026",
-      "descricao": "Improcedência"
-    },
-    {
-      "data": "17/06/2026",
-      "descricao": "Gratuidade da Justiça"
-    },
-    {
-      "data": "17/06/2026",
-      "descricao": "Antecipação de tutela"
-    },
-    {
-      "data": "15/04/2026",
-      "descricao": "Publicação"
-    },
-    {
-      "data": "15/04/2026",
-      "descricao": "Disponibilização no Diário da Justiça Eletrônico"
-    },
-    {
-      "data": "10/06/2026",
+      "data": "03/08/2026",
       "descricao": "Conclusão"
-    },
-    {
-      "data": "08/07/2026",
-      "descricao": "Publicação"
-    },
-    {
-      "data": "08/07/2026",
-      "descricao": "Disponibilização no Diário da Justiça Eletrônico"
-    },
-    {
-      "data": "06/07/2026",
-      "descricao": "Expedida/certificada"
-    },
-    {
-      "data": "06/06/2026",
-      "descricao": "Petição"
-    },
-    {
-      "data": "04/05/2026",
-      "descricao": "Petição"
-    },
-    {
-      "data": "03/07/2026",
-      "descricao": "Petição"
     }
   ]
 }
