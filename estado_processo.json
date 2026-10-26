@@ -1,6 +1,6 @@
 {
-  "hash_ultimo": "c07f294853624bcf501040e036d2c1c4928b96ef0f44a5c69c5e903609a94a2d",
-  "ultima_verificacao": "26/10/2026 09:41",
+  "hash_ultimo": "93f68cd4ba663a3d30f820c23e885a205cb144d7250b96a61fe832d3f9219322",
+  "ultima_verificacao": "26/10/2026 21:20",
   "movimentacoes": [
     {
       "data": "31/07/2026",
@@ -13,6 +13,10 @@
     {
       "data": "31/07/2026",
       "descricao": "Recebimento"
+    },
+    {
+      "data": "22/10/2026",
+      "descricao": "Mérito"
     },
     {
       "data": "21/09/2026",
