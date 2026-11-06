@@ -1,6 +1,6 @@
 {
-  "hash_ultimo": "93f68cd4ba663a3d30f820c23e885a205cb144d7250b96a61fe832d3f9219322",
-  "ultima_verificacao": "05/11/2026 22:32",
+  "hash_ultimo": "0d802b95f758a3974bb9466a35240f4ed2bf30576a51eda932c31326c3b12da5",
+  "ultima_verificacao": "06/11/2026 11:49",
   "movimentacoes": [
     {
       "data": "31/07/2026",
@@ -13,6 +13,22 @@
     {
       "data": "31/07/2026",
       "descricao": "Recebimento"
+    },
+    {
+      "data": "28/10/2026",
+      "descricao": "Publicação"
+    },
+    {
+      "data": "27/10/2026",
+      "descricao": "Disponibilização no Diário da Justiça Eletrônico"
+    },
+    {
+      "data": "26/10/2026",
+      "descricao": "Expedida/certificada"
+    },
+    {
+      "data": "26/10/2026",
+      "descricao": "Não-Provimento"
     },
     {
       "data": "22/10/2026",
